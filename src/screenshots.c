@@ -15,7 +15,7 @@
 #define MAX(x, y) (((x) < (y)) ? (y) : (x))
 
 #define TEXT_COLOR 255, 255, 255
-#define DIALOG_BACKGROUND_COLOR 50, 50, 50
+#define DIALOG_BG_COLOR 50, 50, 50
 #define DIALOG_BORDER_COLOR 100, 100, 100
 
 enum menu_types {
@@ -44,17 +44,22 @@ void draw_base(struct _fbg *fbg, struct _fbg_img *background_image) {
     fbg_imageClip(fbg, background_image, 0, 0, 0, 0,
                   MIN(fbg->width, (int) background_image->width),
                   MIN(fbg->height, (int) background_image->height));
-    fbg_rect(fbg, 25, 25, fbg->width - 50, fbg->height - 50, DIALOG_BACKGROUND_COLOR);
+
+    fbg_rect(fbg, 25, 25, fbg->width - 50, fbg->height - 50, DIALOG_BG_COLOR);
+    fbg_rect(fbg, fbg->width - 25 - 350 - 8 - 8, 25, 350 + 8 + 8, 295 + 8 + 8, 25, 25, 25);
+
     fbg_hline(fbg, 25, 25, fbg->width - 50, DIALOG_BORDER_COLOR);
     fbg_hline(fbg, 25, fbg->height - 25, fbg->width - 49, DIALOG_BORDER_COLOR);
     fbg_vline(fbg, 25, 25, fbg->height - 50, DIALOG_BORDER_COLOR);
     fbg_vline(fbg, fbg->width - 25, 25, fbg->height - 50, DIALOG_BORDER_COLOR);
+
+    fbg_vline(fbg, fbg->width - 25 - 350 - 8 - 8, 25, fbg->height - 50, DIALOG_BORDER_COLOR);
 }
 
 void draw_items(struct _fbg *fbg, struct screenshots_state *state) {
     fbg_textColor(fbg, TEXT_COLOR);
 
-    int offset_left = 25 + 8 + 8;
+    int offset_left = 25 + (3 * 8);
     int offset_top = 25 + 8;
     int spacing = 10;
 
@@ -62,7 +67,46 @@ void draw_items(struct _fbg *fbg, struct screenshots_state *state) {
         fbg_write(fbg, state->menu_entries[i]->display_name, offset_left, offset_top + (i * spacing));
     }
 
-    fbg_write(fbg, ">", offset_left - 8, offset_top + (state->selected_item * spacing));
+    fbg_write(fbg, ">", offset_left - 8 - 9, offset_top + (state->selected_item * spacing));
+}
+
+void draw_screenshot(struct _fbg *fbg, struct screenshots_state *state) {
+    unsigned int max_width = 350;
+    unsigned int max_height = 295;
+
+    if (state->active_screenshot != NULL) {
+        if (state->active_screenshot->width > max_width || state->active_screenshot->height > max_height) {
+            float scale_factor = 1;
+
+            if (state->active_screenshot->width > state->active_screenshot->height) {
+                scale_factor = (float) max_width / (float) state->active_screenshot->width;
+            }
+
+            if (state->active_screenshot->width < state->active_screenshot->height) {
+                scale_factor = (float) max_height / (float) state->active_screenshot->height;
+            }
+
+            if ((float) state->active_screenshot->width * scale_factor > (float) max_width) {
+                scale_factor = (float) max_width / (float) state->active_screenshot->width;
+            }
+
+            if ((float) state->active_screenshot->height * scale_factor > (float) max_height) {
+                scale_factor = (float) max_height / (float) state->active_screenshot->height;
+            }
+
+            fbg_imageEx(fbg, state->active_screenshot,
+                        fbg->width - 25 - 8 - (int) ((float) state->active_screenshot->width * scale_factor),
+                        25 + 8,
+                        scale_factor, scale_factor,
+                        0, 0,
+                        (int) state->active_screenshot->width, (int) state->active_screenshot->height);
+        } else {
+            fbg_imageClip(fbg, state->active_screenshot,
+                          fbg->width - 25 - 8 - (int) state->active_screenshot->width, 25 + 8,
+                          0, 0,
+                          (int) state->active_screenshot->width, (int) state->active_screenshot->height);
+        }
+    }
 }
 
 void try_load_image(struct _fbg *fbg, struct screenshots_state *state) {
@@ -236,24 +280,7 @@ int main(void) {
 
         draw_base(fbg, assets.background_image);
         draw_items(fbg, &state);
-
-        if (state.active_screenshot != NULL) {
-            if (state.active_screenshot->width > 300 || state.active_screenshot->height > 300) {
-                float scale_factor = 300.0f / (float) MAX(state.active_screenshot->width,
-                                                          state.active_screenshot->height);
-                fbg_imageEx(fbg, state.active_screenshot,
-                            fbg->width - 25 - 8 - (int) ((float) state.active_screenshot->width * scale_factor),
-                            25 + 8,
-                            scale_factor, scale_factor,
-                            0, 0,
-                            (int) state.active_screenshot->width, (int) state.active_screenshot->height);
-            } else {
-                fbg_imageClip(fbg, state.active_screenshot,
-                              fbg->width - 25 - 8 - (int) state.active_screenshot->width, 25 + 8,
-                              0, 0,
-                              (int) state.active_screenshot->width, (int) state.active_screenshot->height);
-            }
-        }
+        draw_screenshot(fbg, &state);
 
         fbg_flip(fbg);
 
