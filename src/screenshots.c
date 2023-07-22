@@ -75,36 +75,40 @@ void draw_screenshot(struct _fbg *fbg, struct screenshots_state *state) {
     unsigned int max_height = 295;
 
     if (state->active_screenshot != NULL) {
-        if (state->active_screenshot->width > max_width || state->active_screenshot->height > max_height) {
+        struct _fbg_img *sc = state->active_screenshot;
+
+        if (sc->width > max_width || sc->height > max_height) {
             float scale_factor = 1;
 
-            if (state->active_screenshot->width > state->active_screenshot->height) {
-                scale_factor = (float) max_width / (float) state->active_screenshot->width;
+            if (sc->width > sc->height) {
+                scale_factor = (float) max_width / (float) sc->width;
             }
 
-            if (state->active_screenshot->width < state->active_screenshot->height) {
-                scale_factor = (float) max_height / (float) state->active_screenshot->height;
+            if (sc->width < sc->height) {
+                scale_factor = (float) max_height / (float) sc->height;
             }
 
-            if ((float) state->active_screenshot->width * scale_factor > (float) max_width) {
-                scale_factor = (float) max_width / (float) state->active_screenshot->width;
+            if ((float) sc->width * scale_factor > (float) max_width) {
+                scale_factor = (float) max_width / (float) sc->width;
             }
 
-            if ((float) state->active_screenshot->height * scale_factor > (float) max_height) {
-                scale_factor = (float) max_height / (float) state->active_screenshot->height;
+            if ((float) sc->height * scale_factor > (float) max_height) {
+                scale_factor = (float) max_height / (float) sc->height;
             }
 
-            fbg_imageEx(fbg, state->active_screenshot,
-                        fbg->width - 25 - 8 - (int) ((float) state->active_screenshot->width * scale_factor),
-                        25 + 8,
-                        scale_factor, scale_factor,
-                        0, 0,
-                        (int) state->active_screenshot->width, (int) state->active_screenshot->height);
+            unsigned int top =
+                    25 + 8 + (max_height - (int) ((float) sc->height * scale_factor)) / 2;
+            unsigned int left_margin = (max_width - (int) ((float) sc->width * scale_factor)) / 2;
+            unsigned int left = fbg->width - 25 - 8 - max_width + left_margin;
+
+            fbg_imageEx(fbg, sc, (int) left, (int) top, scale_factor, scale_factor,
+                        0, 0, (int) sc->width, (int) sc->height);
         } else {
-            fbg_imageClip(fbg, state->active_screenshot,
-                          fbg->width - 25 - 8 - (int) state->active_screenshot->width, 25 + 8,
-                          0, 0,
-                          (int) state->active_screenshot->width, (int) state->active_screenshot->height);
+            unsigned int top = 25 + 8 + (max_height - (int) sc->height) / 2;
+            unsigned int left_margin = (max_width - (int) sc->width) / 2;
+            unsigned int left = fbg->width - 25 - 8 - max_width + left_margin;
+
+            fbg_imageClip(fbg, sc, (int) left, (int) top, 0, 0, (int) sc->width, (int) sc->height);
         }
     }
 }
