@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <regex.h>
+#include <stdio.h>
 
 #include "fbg/fbgraphics.h"
 #include "fbg/fbdev/fbg_fbdev.h"
@@ -59,15 +61,69 @@ void draw_base(struct _fbg *fbg, struct _fbg_img *background_image) {
 void draw_items(struct _fbg *fbg, struct screenshots_state *state) {
     fbg_textColor(fbg, TEXT_COLOR);
 
-    int offset_left = 25 + (3 * 8);
+    int offset_left = 25 + (2 * 8);
     int offset_top = 25 + 8;
-    int spacing = 10;
+    int spacing = 20;
 
-    for (int i = 0; i < state->menu_entry_count; i++) {
-        fbg_write(fbg, state->menu_entries[i]->display_name, offset_left, offset_top + (i * spacing));
+    if (strcmp(state->active_path, SCREENSHOTS_DEFAULT) == 0) {
+        spacing = 10;
     }
 
-    fbg_write(fbg, ">", offset_left - 8 - 9, offset_top + (state->selected_item * spacing));
+    regex_t name_match;
+    int result;
+
+    result = regcomp(&name_match, "^([0-9]{4})([0-9]{2})([0-9]{2})_([0-9]{2})([0-9]{2})([0-9]{2})-(.+)\\.png$",
+                     REG_EXTENDED);
+    if (result != 0) {
+        die("regcomp");
+    }
+
+    for (int i = 0; i < state->menu_entry_count; i++) {
+        regmatch_t matches[8];
+        result = regexec(&name_match, state->menu_entries[i]->display_name, 8, matches, 0);
+        if (result == 0) {
+            char new_name[256];
+
+            char year[5], month[3], day[3], hour[3], minute[3], second[3];
+            strncpy(year, &state->menu_entries[i]->display_name[matches[1].rm_so], 4);
+            year[4] = '\0';
+            strncpy(month, &state->menu_entries[i]->display_name[matches[2].rm_so], 2);
+            month[2] = '\0';
+            strncpy(day, &state->menu_entries[i]->display_name[matches[3].rm_so], 2);
+            day[2] = '\0';
+            strncpy(hour, &state->menu_entries[i]->display_name[matches[4].rm_so], 2);
+            hour[2] = '\0';
+            strncpy(minute, &state->menu_entries[i]->display_name[matches[5].rm_so], 2);
+            minute[2] = '\0';
+            strncpy(second, &state->menu_entries[i]->display_name[matches[6].rm_so], 2);
+            second[2] = '\0';
+
+            char game_name[236];
+            strncpy(game_name, &state->menu_entries[i]->display_name[matches[7].rm_so],
+                    matches[7].rm_eo - matches[7].rm_so);
+            game_name[matches[7].rm_eo - matches[7].rm_so] = '\0';
+
+            if (strlen(game_name) > 25) {
+                game_name[25] = '\0';
+            }
+
+            sprintf(new_name, "%s-%s-%s %s:%s:%s\n%s", year, month, day, hour, minute, second, game_name);
+
+
+            fbg_write(fbg, new_name, offset_left, offset_top + (i * spacing));
+        } else {
+            if (state->menu_entries[i]->type == MENU_TYPE_UP) {
+                fbg_write(fbg, "..               <UP-DIR>", offset_left, offset_top + (i * spacing));
+            } else {
+                fbg_write(fbg, state->menu_entries[i]->display_name, offset_left, offset_top + (i * spacing));
+            }
+        }
+
+    }
+
+    regfree(&name_match);
+
+    fbg_write(fbg, ">", offset_left - 8 - 5, offset_top + (state->selected_item * spacing));
 }
 
 void draw_screenshot(struct _fbg *fbg, struct screenshots_state *state) {
